@@ -11,21 +11,24 @@ import torch.backends.cudnn as cudnn
 from models.experimental import attempt_load
 from utils.datasets import LoadStreams, LoadImages
 from utils.general import check_img_size, check_requirements, \
-                check_imshow, non_max_suppression, apply_classifier, \
-                scale_coords, xyxy2xywh, strip_optimizer, set_logging, \
-                increment_path
+    check_imshow, non_max_suppression, apply_classifier, \
+    scale_coords, xyxy2xywh, strip_optimizer, set_logging, \
+    increment_path
 from utils.plots import plot_one_box
 from utils.torch_utils import select_device, load_classifier, \
-                time_synchronized, TracedModel
+    time_synchronized, TracedModel
 from utils.download_weights import download
 
-#For SORT tracking
+# For SORT tracking
 import skimage
 from sort import *
 
-#............................... Bounding Boxes Drawing ............................
+# ............................... Bounding Boxes Drawing ............................
 """Function to Draw Bounding boxes"""
-def draw_boxes(img, bbox, identities=None, categories=None, names=None, save_with_object_id=False, path=None,offset=(0, 0)):
+
+
+def draw_boxes(img, bbox, identities=None, categories=None, names=None, save_with_object_id=False, path=None,
+               offset=(0, 0)):
     for i, box in enumerate(bbox):
         x1, y1, x2, y2 = [int(i) for i in box]
         x1 += offset[0]
@@ -34,59 +37,60 @@ def draw_boxes(img, bbox, identities=None, categories=None, names=None, save_wit
         y2 += offset[1]
         cat = int(categories[i]) if categories is not None else 0
         id = int(identities[i]) if identities is not None else 0
-        data = (int((box[0]+box[2])/2),(int((box[1]+box[3])/2)))
-        label = str(id) + ":"+ names[cat]
+        data = (int((box[0] + box[2]) / 2), (int((box[1] + box[3]) / 2)))
+        label = str(id) + ":" + names[cat]
         (w, h), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)
-        cv2.rectangle(img, (x1, y1), (x2, y2), (255,0,20), 2)
-        cv2.rectangle(img, (x1, y1 - 20), (x1 + w, y1), (255,144,30), -1)
-        cv2.putText(img, label, (x1, y1 - 5),cv2.FONT_HERSHEY_SIMPLEX, 
+        cv2.rectangle(img, (x1, y1), (x2, y2), (255, 0, 20), 2)
+        cv2.rectangle(img, (x1, y1 - 20), (x1 + w, y1), (255, 144, 30), -1)
+        cv2.putText(img, label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX,
                     0.6, [255, 255, 255], 1)
         # cv2.circle(img, data, 6, color,-1)   #centroid of box
         txt_str = ""
         if save_with_object_id:
             txt_str += "%i %i %f %f %f %f %f %f" % (
-                id, cat, int(box[0])/img.shape[1], int(box[1])/img.shape[0] , int(box[2])/img.shape[1], int(box[3])/img.shape[0] ,int(box[0] + (box[2] * 0.5))/img.shape[1] ,
+                id, cat, int(box[0]) / img.shape[1], int(box[1]) / img.shape[0], int(box[2]) / img.shape[1],
+                int(box[3]) / img.shape[0], int(box[0] + (box[2] * 0.5)) / img.shape[1],
                 int(box[1] + (
-                    box[3]* 0.5))/img.shape[0])
+                        box[3] * 0.5)) / img.shape[0])
             txt_str += "\n"
             with open(path + '.txt', 'a') as f:
                 f.write(txt_str)
     return img
-#..............................................................................
+
+
+# ..............................................................................
 
 
 def detect(save_img=False):
-    source, weights, view_img, save_txt, imgsz, trace, colored_trk, save_bbox_dim, save_with_object_id= opt.source, opt.weights, opt.view_img, opt.save_txt, opt.img_size, not opt.no_trace, opt.colored_trk, opt.save_bbox_dim, opt.save_with_object_id
+    source, weights, view_img, save_txt, imgsz, trace, colored_trk, save_bbox_dim, save_with_object_id = opt.source, opt.weights, opt.view_img, opt.save_txt, opt.img_size, not opt.no_trace, opt.colored_trk, opt.save_bbox_dim, opt.save_with_object_id
     save_img = not opt.nosave and not source.endswith('.txt')  # save inference images
     webcam = source.isnumeric() or source.endswith('.txt') or source.lower().startswith(
         ('rtsp://', 'rtmp://', 'http://', 'https://'))
 
-
-    #.... Initialize SORT .... 
-    #......................... 
-    sort_max_age = 5 
+    # .... Initialize SORT ....
+    # .........................
+    sort_max_age = 5
     sort_min_hits = 2
     sort_iou_thresh = 0.2
     sort_tracker = Sort(max_age=sort_max_age,
-                       min_hits=sort_min_hits,
-                       iou_threshold=sort_iou_thresh)
-    #......................... 
-    
-    
-    #........Rand Color for every trk.......
+                        min_hits=sort_min_hits,
+                        iou_threshold=sort_iou_thresh)
+    # .........................
+
+    # ........Rand Color for every trk.......
     rand_color_list = []
-    for i in range(0,5005):
+    for i in range(0, 5005):
         r = randint(0, 255)
         g = randint(0, 255)
         b = randint(0, 255)
         rand_color = (r, g, b)
         rand_color_list.append(rand_color)
-    #......................................
-   
+    # ......................................
 
     # Directories
     save_dir = Path(increment_path(Path(opt.project) / opt.name, exist_ok=opt.exist_ok))  # increment run
-    (save_dir / 'labels' if save_txt or save_with_object_id else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
+    (save_dir / 'labels' if save_txt or save_with_object_id else save_dir).mkdir(parents=True,
+                                                                                 exist_ok=True)  # make dir
 
     # Initialize
     set_logging()
@@ -131,7 +135,6 @@ def detect(save_img=False):
 
     t0 = time.time()
 
-    
     for path, img, im0s, vid_cap in dataset:
         img = torch.from_numpy(img).to(device)
         img = img.half() if half else img.float()  # uint8 to fp16/32
@@ -140,7 +143,8 @@ def detect(save_img=False):
             img = img.unsqueeze(0)
 
         # Warmup
-        if device.type != 'cpu' and (old_img_b != img.shape[0] or old_img_h != img.shape[2] or old_img_w != img.shape[3]):
+        if device.type != 'cpu' and (
+                old_img_b != img.shape[0] or old_img_h != img.shape[2] or old_img_w != img.shape[3]):
             old_img_b = img.shape[0]
             old_img_h = img.shape[2]
             old_img_w = img.shape[3]
@@ -180,72 +184,74 @@ def detect(save_img=False):
                     n = (det[:, -1] == c).sum()  # detections per class
                     s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
 
-                #..................USE TRACK FUNCTION....................
-                #pass an empty array to sort
-                dets_to_sort = np.empty((0,6))
-                
+                # ..................USE TRACK FUNCTION....................
+                # pass an empty array to sort
+                dets_to_sort = np.empty((0, 6))
+
                 # NOTE: We send in detected object class too
-                for x1,y1,x2,y2,conf,detclass in det.cpu().detach().numpy():
-                    dets_to_sort = np.vstack((dets_to_sort, 
-                                np.array([x1, y1, x2, y2, conf, detclass])))
-                
+                for x1, y1, x2, y2, conf, detclass in det.cpu().detach().numpy():
+                    dets_to_sort = np.vstack((dets_to_sort,
+                                              np.array([x1, y1, x2, y2, conf, detclass])))
+
                 # Run SORT
                 tracked_dets = sort_tracker.update(dets_to_sort)
-                tracks =sort_tracker.getTrackers()
+                tracks = sort_tracker.getTrackers()
 
                 txt_str = ""
 
-                #loop over tracks
+                # loop over tracks
                 for track in tracks:
                     # color = compute_color_for_labels(id)
-                    #draw colored tracks
+                    # draw colored tracks
                     if colored_trk:
                         [cv2.line(im0, (int(track.centroidarr[i][0]),
-                                    int(track.centroidarr[i][1])), 
-                                    (int(track.centroidarr[i+1][0]),
-                                    int(track.centroidarr[i+1][1])),
-                                    rand_color_list[track.id], thickness=2) 
-                                    for i,_ in  enumerate(track.centroidarr) 
-                                      if i < len(track.centroidarr)-1 ] 
-                    #draw same color tracks
+                                        int(track.centroidarr[i][1])),
+                                  (int(track.centroidarr[i + 1][0]),
+                                   int(track.centroidarr[i + 1][1])),
+                                  rand_color_list[track.id], thickness=2)
+                         for i, _ in enumerate(track.centroidarr)
+                         if i < len(track.centroidarr) - 1]
+                        # draw same color tracks
                     else:
                         [cv2.line(im0, (int(track.centroidarr[i][0]),
-                                    int(track.centroidarr[i][1])), 
-                                    (int(track.centroidarr[i+1][0]),
-                                    int(track.centroidarr[i+1][1])),
-                                    (255,0,0), thickness=2) 
-                                    for i,_ in  enumerate(track.centroidarr) 
-                                      if i < len(track.centroidarr)-1 ] 
+                                        int(track.centroidarr[i][1])),
+                                  (int(track.centroidarr[i + 1][0]),
+                                   int(track.centroidarr[i + 1][1])),
+                                  (255, 0, 0), thickness=2)
+                         for i, _ in enumerate(track.centroidarr)
+                         if i < len(track.centroidarr) - 1]
 
                     if save_txt and not save_with_object_id:
                         # Normalize coordinates
-                        txt_str += "%i %i %f %f" % (track.id, track.detclass, track.centroidarr[-1][0] / im0.shape[1], track.centroidarr[-1][1] / im0.shape[0])
+                        txt_str += "%i %i %f %f" % (track.id, track.detclass, track.centroidarr[-1][0] / im0.shape[1],
+                                                    track.centroidarr[-1][1] / im0.shape[0])
                         if save_bbox_dim:
-                            txt_str += " %f %f" % (np.abs(track.bbox_history[-1][0] - track.bbox_history[-1][2]) / im0.shape[0], np.abs(track.bbox_history[-1][1] - track.bbox_history[-1][3]) / im0.shape[1])
+                            txt_str += " %f %f" % (
+                                np.abs(track.bbox_history[-1][0] - track.bbox_history[-1][2]) / im0.shape[0],
+                                np.abs(track.bbox_history[-1][1] - track.bbox_history[-1][3]) / im0.shape[1])
                         txt_str += "\n"
-                
+
                 if save_txt and not save_with_object_id:
                     with open(txt_path + '.txt', 'a') as f:
                         f.write(txt_str)
 
                 # draw boxes for visualization
-                if len(tracked_dets)>0:
-                    bbox_xyxy = tracked_dets[:,:4]
+                if len(tracked_dets) > 0:
+                    bbox_xyxy = tracked_dets[:, :4]
                     identities = tracked_dets[:, 8]
                     categories = tracked_dets[:, 4]
                     draw_boxes(im0, bbox_xyxy, identities, categories, names, save_with_object_id, txt_path)
-                #........................................................
-                
+                # ........................................................
+
             # Print time (inference + NMS)
             print(f'{s}Done. ({(1E3 * (t2 - t1)):.1f}ms) Inference, ({(1E3 * (t3 - t2)):.1f}ms) NMS')
-            
-        
+
             # Stream results
             if view_img:
                 cv2.imshow(str(p), im0)
                 if cv2.waitKey(1) == ord('q'):  # q to quit
-                  cv2.destroyAllWindows()
-                  raise StopIteration
+                    cv2.destroyAllWindows()
+                    raise StopIteration
 
             # Save results (image with detections)
             if save_img:
@@ -269,7 +275,7 @@ def detect(save_img=False):
 
     if save_txt or save_img or save_with_object_id:
         s = f"\n{len(list(save_dir.glob('labels/*.txt')))} labels saved to {save_dir / 'labels'}" if save_txt else ''
-        #print(f"Results saved to {save_dir}{s}")
+        # print(f"Results saved to {save_dir}{s}")
 
     print(f'Done. ({time.time() - t0:.3f}s)')
 
@@ -278,7 +284,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', nargs='+', type=str, default='yolov7.pt', help='model.pt path(s)')
     parser.add_argument('--download', action='store_true', help='download model weights automatically')
-    parser.add_argument('--no-download', dest='download', action='store_false',help='not download model weights if already exist')
+    parser.add_argument('--no-download', dest='download', action='store_false',
+                        help='not download model weights if already exist')
     parser.add_argument('--source', type=str, default='inference/images', help='source')  # file/folder, 0 for webcam
     parser.add_argument('--img-size', type=int, default=640, help='inference size (pixels)')
     parser.add_argument('--conf-thres', type=float, default=0.25, help='object confidence threshold')
@@ -297,13 +304,14 @@ if __name__ == '__main__':
     parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
     parser.add_argument('--no-trace', action='store_true', help='don`t trace model')
     parser.add_argument('--colored-trk', action='store_true', help='assign different color to every track')
-    parser.add_argument('--save-bbox-dim', action='store_true', help='save bounding box dimensions with --save-txt tracks')
+    parser.add_argument('--save-bbox-dim', action='store_true',
+                        help='save bounding box dimensions with --save-txt tracks')
     parser.add_argument('--save-with-object-id', action='store_true', help='save results with object id to *.txt')
 
     parser.set_defaults(download=True)
     opt = parser.parse_args()
     print(opt)
-    #check_requirements(exclude=('pycocotools', 'thop'))
+    # check_requirements(exclude=('pycocotools', 'thop'))
     if opt.download and not os.path.exists(str(opt.weights)):
         print('Model weights not found. Attempting to download now...')
         download('./')
