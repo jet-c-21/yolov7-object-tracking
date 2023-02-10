@@ -128,7 +128,8 @@ class InfVideo:
         old_img_w = old_img_h = imgsz
         old_img_b = 1
 
-        print(len(dataset))
+        for path, img, im0s, vid_cap in dataset:
+            print(path)
 
 
 
