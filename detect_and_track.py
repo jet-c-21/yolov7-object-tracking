@@ -137,7 +137,7 @@ def detect(save_img=False):
     t0 = time.time()
     print(f"dataset len = {len(dataset)}")
     for path, img, im0s, vid_cap in dataset:
-        print('❤️' * 20, path)
+        # print('❤️' * 20, path)
         img = torch.from_numpy(img).to(device)
         img = img.half() if half else img.float()  # uint8 to fp16/32
         img /= 255.0  # 0 - 255 to 0.0 - 1.0
@@ -170,7 +170,7 @@ def detect(save_img=False):
         # Process detections
         for i, det in enumerate(pred):  # detections per image
             if webcam:  # batch_size >= 1
-                p, s, im0, frame = path[i], '%g: ' % i, im0s[i].copy(), dataset.count
+                p, s, im0, frame = path[i], f"{i}: ", im0s[i].copy(), dataset.count
             else:
                 p, s, im0, frame = path, '', im0s, getattr(dataset, 'frame', 0)
 
