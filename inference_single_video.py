@@ -20,10 +20,10 @@ import torch.backends.cudnn as cudnn
 
 
 class InfVideo:
-    def __init__(self):
+    def __init__(self, source):
         self.weights = 'yolov7.pt'
         self.download = True
-        self.source = 'walking_people.mp4'
+        self.source = source
         self.img_size = 640
         self.conf_thres = 0.25
         self.iou_thres = 0.45
@@ -32,7 +32,7 @@ class InfVideo:
         self.save_txt = False
         self.save_conf = False
         self.nosave = False
-        self.classes = [0]
+        self.classes = None
         self.agnostic_nms = False
         self.augment = False
         self.update = False
@@ -161,6 +161,7 @@ class InfVideo:
         old_img_w = old_img_h = imgsz
         old_img_b = 1
 
+        vid_writer = cv2.VideoWriter('infer_video.mp4', cv2.VideoWriter_fourcc(*'mp4v'), 25, (1920, 1080))
         for path, img, im0s, vid_cap in dataset:
             img = torch.from_numpy(img).to(device)
             img = img.half() if half else img.float()  # uint8 to fp16/32
@@ -268,7 +269,8 @@ class InfVideo:
                         bbox_xyxy = tracked_dets[:, :4]
                         identities = tracked_dets[:, 8]
                         categories = tracked_dets[:, 4]
-                        InfVideo.draw_boxes(im0, bbox_xyxy, identities, categories, names, save_with_object_id, txt_path)
+                        InfVideo.draw_boxes(im0, bbox_xyxy, identities, categories, names, save_with_object_id,
+                                            txt_path)
                     # ........................................................
 
                 # Print time (inference + NMS)
@@ -281,28 +283,34 @@ class InfVideo:
                         cv2.destroyAllWindows()
                         raise StopIteration
 
-                # Save results (image with detections)
-                if save_img:
-                    if dataset.mode == 'image':
-                        cv2.imwrite(save_path, im0)
-                        print(f" The image with the result is saved in: {save_path}")
-                    else:  # 'video' or 'stream'
-                        if vid_path != save_path:  # new video
-                            vid_path = save_path
-                            if isinstance(vid_writer, cv2.VideoWriter):
-                                vid_writer.release()  # release previous video writer
-                            if vid_cap:  # video
-                                fps = vid_cap.get(cv2.CAP_PROP_FPS)
-                                w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-                                h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-                            else:  # stream
-                                fps, w, h = 30, im0.shape[1], im0.shape[0]
-                                save_path += '.mp4'
-                            vid_writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
-                        # print(f"video_save_path = {save_path}")
-                        vid_writer.write(im0)
+                # # Save results (image with detections)
+                # if save_img:
+                #     if dataset.mode == 'image':
+                #         cv2.imwrite(save_path, im0)
+                #         print(f" The image with the result is saved in: {save_path}")
+                #     else:  # 'video' or 'stream'
+                #         if vid_path != save_path:  # new video
+                #             vid_path = save_path
+                #             if isinstance(vid_writer, cv2.VideoWriter):
+                #                 vid_writer.release()  # release previous video writer
+                #             if vid_cap:  # video
+                #                 fps = vid_cap.get(cv2.CAP_PROP_FPS)
+                #                 w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                #                 h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                #             else:  # stream
+                #                 fps, w, h = 30, im0.shape[1], im0.shape[0]
+                #                 save_path += '.mp4'
+                #             print(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
+                #             vid_writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
+                #
+                #         # print(f"video_save_path = {save_path}")
+                #         vid_writer.write(im0)
+                vid_writer.write(im0)
 
 
 if __name__ == '__main__':
-    inf_video = InfVideo()
+    # video_path = 'raw_video/walking_people.mp4'
+    video_path = 'raw_video/many_wild_birds.mp4'
+
+    inf_video = InfVideo(video_path)
     inf_video.launch()
