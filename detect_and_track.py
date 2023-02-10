@@ -18,6 +18,7 @@ from utils.plots import plot_one_box
 from utils.torch_utils import select_device, load_classifier, \
     time_synchronized, TracedModel
 from utils.download_weights import download
+from pprint import pprint as pp
 
 # For SORT tracking
 import skimage
@@ -62,8 +63,8 @@ def draw_boxes(img, bbox, identities=None, categories=None, names=None, save_wit
 
 
 def detect(save_img=False):
-    source, weights, view_img, save_txt, imgsz, trace, colored_trk, save_bbox_dim, save_with_object_id = opt.source, opt.weights, opt.view_img, opt.save_txt, opt.img_size, not opt.no_trace, opt.colored_trk, opt.save_bbox_dim, opt.save_with_object_id
-    save_img = not opt.nosave and not source.endswith('.txt')  # save inference images
+    source, weights, view_img, save_txt, imgsz, trace, colored_trk, save_bbox_dim, save_with_object_id = self.source, self.weights, self.view_img, self.save_txt, self.img_size, not self.no_trace, self.colored_trk, self.save_bbox_dim, self.save_with_object_id
+    save_img = not self.nosave and not source.endswith('.txt')  # save inference images
     webcam = source.isnumeric() or source.endswith('.txt') or source.lower().startswith(
         ('rtsp://', 'rtmp://', 'http://', 'https://'))
 
@@ -88,13 +89,13 @@ def detect(save_img=False):
     # ......................................
 
     # Directories
-    save_dir = Path(increment_path(Path(opt.project) / opt.name, exist_ok=opt.exist_ok))  # increment run
+    save_dir = Path(increment_path(Path(self.project) / self.name, exist_ok=self.exist_ok))  # increment run
     (save_dir / 'labels' if save_txt or save_with_object_id else save_dir).mkdir(parents=True,
                                                                                  exist_ok=True)  # make dir
 
     # Initialize
     set_logging()
-    device = select_device(opt.device)
+    device = select_device(self.device)
     half = device.type != 'cpu'  # half precision only supported on CUDA
 
     # Load model
@@ -103,7 +104,7 @@ def detect(save_img=False):
     imgsz = check_img_size(imgsz, s=stride)  # check img_size
 
     if trace:
-        model = TracedModel(model, device, opt.img_size)
+        model = TracedModel(model, device, self.img_size)
 
     if half:
         model.half()  # to FP16
@@ -134,7 +135,7 @@ def detect(save_img=False):
     old_img_b = 1
 
     t0 = time.time()
-
+    print(f"dataset len = {len(dataset)}")
     for path, img, im0s, vid_cap in dataset:
         img = torch.from_numpy(img).to(device)
         img = img.half() if half else img.float()  # uint8 to fp16/32
@@ -149,15 +150,16 @@ def detect(save_img=False):
             old_img_h = img.shape[2]
             old_img_w = img.shape[3]
             for i in range(3):
-                model(img, augment=opt.augment)[0]
+                model(img, augment=self.augment)[0]
 
         # Inference
         t1 = time_synchronized()
-        pred = model(img, augment=opt.augment)[0]
+        pred = model(img, augment=self.augment)[0]
         t2 = time_synchronized()
 
         # Apply NMS
-        pred = non_max_suppression(pred, opt.conf_thres, opt.iou_thres, classes=opt.classes, agnostic=opt.agnostic_nms)
+        pred = non_max_suppression(pred, self.conf_thres, self.iou_thres, classes=self.classes,
+                                   agnostic=self.agnostic_nms)
         t3 = time_synchronized()
 
         # Apply Classifier
@@ -309,17 +311,24 @@ if __name__ == '__main__':
     parser.add_argument('--save-with-object-id', action='store_true', help='save results with object id to *.txt')
 
     parser.set_defaults(download=True)
-    opt = parser.parse_args()
-    print(opt)
+    self = parser.parse_args()
+
+    # print()
+    # print('='*30)
+    # for arg in vars(self):
+    #     print(f"{arg} = {getattr(self, arg)}")
+    # print('=' * 30)
+    # print()
+
     # check_requirements(exclude=('pycocotools', 'thop'))
-    if opt.download and not os.path.exists(str(opt.weights)):
+    if self.download and not os.path.exists(str(self.weights)):
         print('Model weights not found. Attempting to download now...')
         download('./')
 
     with torch.no_grad():
-        if opt.update:  # update all models (to fix SourceChangeWarning)
-            for opt.weights in ['yolov7.pt']:
+        if self.update:  # update all models (to fix SourceChangeWarning)
+            for self.weights in ['yolov7.pt']:
                 detect()
-                strip_optimizer(opt.weights)
+                strip_optimizer(self.weights)
         else:
             detect()

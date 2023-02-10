@@ -16,3 +16,6 @@ remove jupyter kernel
 ```shell
 jupyter kernelspec uninstall yolo7 -y
 ```
+
+## ```version `GLIBCXX_3.4.30' not found```
+conda install -c conda-forge gcc=12.1.0
