@@ -3,6 +3,7 @@ runs/
 __pycache__
 weights/
 traced_model.pt
+yolov7.pt
 
 # Customerization
 ## Folders
