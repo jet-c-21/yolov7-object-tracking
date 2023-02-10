@@ -116,6 +116,7 @@ class InfVideo:
             cudnn.benchmark = True  # set True to speed up constant image size inference
             dataset = LoadStreams(source, img_size=imgsz, stride=stride)
         else:
+            print('LoadImages')
             dataset = LoadImages(source, img_size=imgsz, stride=stride)
 
         # Get names and colors
@@ -123,10 +124,11 @@ class InfVideo:
         colors = [[random.randint(0, 255) for _ in range(3)] for _ in names]
 
         # Run inference
-        if device.type != 'cpu':
-            model(torch.zeros(1, 3, imgsz, imgsz).to(device).type_as(next(model.parameters())))  # run once
+        # if device.type != 'cpu':
+        #     model(torch.zeros(1, 3, imgsz, imgsz).to(device).type_as(next(model.parameters())))  # run once
         old_img_w = old_img_h = imgsz
         old_img_b = 1
+
 
         for path, img, im0s, vid_cap in dataset:
             print(path)
